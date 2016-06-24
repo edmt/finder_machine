@@ -3,7 +3,7 @@ package consumers
 import (
 	"database/sql"
 	"fmt"
-	// _ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/edmt/finder_machine/producers"
 	l4g "github.com/edmt/log4go"
 	"github.com/olebedev/config"

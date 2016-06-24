@@ -23,7 +23,8 @@ select xml.uuid, xml.xml, xml.timestamp
 from xml
 inner join cfd on cfd.numTimbre = xml.uuid
 left join POOL_ENVIOCFD_SAT_Z as pz on pz.comprobante_Id = cfd.idInternal
-where timestamp > @startDate and timestamp < @endDate and pz.comprobante_Id is null
+left join cfd_envio_sat_z as acuse on acuse.comprobante_Id = cfd.idInternal
+where timestamp > @startDate and timestamp < @endDate and pz.comprobante_Id is null and acuse.comprobante_Id is null
 order by timestamp desc
 
 END
@@ -54,4 +55,27 @@ values(replace(newid(), '-', ''), @comprobanteId, getdate(), 0)
 END
 
 exec FinderMachine_WritePool 'fc0d9501-25f9-40fa-b4ba-73dfaf06dc6d'
+```
+
+FinderMachine_ReadXml_MissingCfd:
+
+```
+CREATE PROCEDURE FinderMachine_ReadXml_MissingCfd
+    @startDate VARCHAR(20),
+    @endDate varchar(20)
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+select xml.uuid, xml.xml, xml.timestamp
+from xml
+left join cfd on cfd.numTimbre = xml.uuid
+where timestamp > @startDate and timestamp < @endDate and cfd.idInternal is null
+order by timestamp desc
+
+END
+
+exec FinderMachine_ReadXml_MissingCfd '2016-06-24', '2016-06-30'
+
 ```
