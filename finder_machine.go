@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/docopt/docopt-go"
-	"github.com/edmt/finder_machine/consumers"
+	cfdi "github.com/edmt/finder_machine/consumers/cfdi"
+	pool "github.com/edmt/finder_machine/consumers/pool"
 	"github.com/edmt/finder_machine/producers"
-	// "github.com/edmt/finder_machine/sat_client"
 	l4g "github.com/edmt/log4go"
 	"os"
 	"time"
@@ -17,10 +17,10 @@ func init() {
 }
 
 func main() {
-	// l4g.Debug(sat_client.ConsultaRequest{"ATA980601E90", "SP&040526HD3", "45.45", "5adaa059-391e-4461-8d65-87647de235bc"}.Consulta())
 	usage := `
 	Usage:
 	  finder_machine requeue [--start-date=<start_date>] [--end-date=<end_date>]
+	  finder_machine reprocess [--start-date=<start_date>] [--end-date=<end_date>]
 	  finder_machine -h | --help
 	  finder_machine -v | --version
 
@@ -33,9 +33,14 @@ func main() {
 	l4g.Info("Process ID: %d", os.Getpid())
 
 	if options["requeue"].(bool) {
-		consumers.WritePool(
-			consumers.XmlToPool(
+		pool.WritePool(
+			pool.XmlToPool(
 				producers.ReadXML(options)))
+	}
+	if options["reprocess"].(bool) {
+		cfdi.WriteCfdi(
+			producers.SatValidation(
+				producers.ReadXMLMissingCfd(options)))
 	}
 
 	l4g.Info("Process stopped")

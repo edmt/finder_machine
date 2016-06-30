@@ -1,4 +1,4 @@
-package consumers
+package cfdi
 
 import (
 	"database/sql"
@@ -8,28 +8,12 @@ import (
 	l4g "github.com/edmt/log4go"
 	"github.com/olebedev/config"
 	"log"
-	"time"
+	"os"
+	"strings"
 )
 
-func XmlToPool(in <-chan producers.XmlRecord) <-chan PoolRecord {
-	out := make(chan PoolRecord)
-	go func() {
-		for record := range in {
-			out <- PoolRecord{record.Uuid, time.Now().Local(), 0}
-		}
-		close(out)
-	}()
-	return out
-}
-
-type PoolRecord struct {
-	Uuid          string
-	FechaRegistro time.Time
-	Status        int
-}
-
-func WritePool(in <-chan PoolRecord) {
-	l4g.Info("consumers/pool: loading configuration")
+func WriteCfdi(in <-chan producers.CfdiRecord) {
+	l4g.Info("consumers/cfdi: loading configuration")
 
 	cfg, err := config.ParseYamlFile("config/finder_machine.yaml")
 	if err != nil {
@@ -45,7 +29,7 @@ func WritePool(in <-chan PoolRecord) {
 	l4g.Debug("host:%s port:%s user:%s password:%s database:%s",
 		host, port, user, password, database)
 
-	l4g.Info("consumers/pool: connecting to database")
+	l4g.Info("consumers/cfdi: connecting to database")
 
 	connection := connectionParameters{
 		Host:     host,
@@ -80,21 +64,37 @@ func (c connectionParameters) connect() *sql.DB {
 	return database
 }
 
-func consumeChannel(db *sql.DB, in <-chan PoolRecord) {
-	l4g.Info("consumers/pool: ready to write to database")
+func consumeChannel(db *sql.DB, in <-chan producers.CfdiRecord) {
+	l4g.Info("consumers/cfdi: ready to write to database")
 
-	stmt, err := db.Prepare("exec FinderMachine_WritePool ?")
+	stmt, err := db.Prepare("exec FinderMachine_RecoverDeletedCfd ?")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for record := range in {
-		l4g.Info("consumers/pool: enqueuing cfdi with uuid: %s", record.Uuid)
-		_, err = stmt.Exec(record.Uuid)
+		// Success
+		if strings.Contains(record.SatStatus, "satisfactoriamente") {
+			l4g.Info("consumers/cfdi: recovering cfdi from cfd_delete with uuid: %s", record.Xml.Uuid)
+			_, err = stmt.Exec(record.Xml.Uuid)
 
-		if err != nil {
-			log.Fatal(err)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 		}
-	}
 
+		// 602: not found
+		if strings.Contains(record.SatStatus, "602") {
+			l4g.Info("consumers/cfdi: this is supposed to write to cfd...")
+
+			// Append to missing.log file
+			missingFile, _ := os.OpenFile("./tmp/missing.log", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0660)
+			missingFile.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\n", record.Cfdi.Emisor.RFC, record.Cfdi.Receptor.RFC, record.Xml.Uuid, record.Cfdi.Fecha))
+			defer missingFile.Close()
+
+		}
+
+		// 601: bad request
+	}
 }

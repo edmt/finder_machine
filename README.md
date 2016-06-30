@@ -76,6 +76,47 @@ order by timestamp desc
 
 END
 
+
 exec FinderMachine_ReadXml_MissingCfd '2016-06-24', '2016-06-30'
 
+```
+
+
+FinderMachine_RecoverDeletedCfd:
+
+```
+CREATE PROCEDURE FinderMachine_RecoverDeletedCfd
+    @uuid VARCHAR(32)
+AS
+BEGIN
+
+SET NOCOUNT ON
+
+IF OBJECT_ID(  '[QA-DANY].dbo.cfd_delete', 'U') IS NOT NULL
+begin
+  insert        [QA-DANY].dbo.cfd
+  select * from [QA-DANY].dbo.cfd_delete where numTimbre = @uuid;
+end
+
+IF OBJECT_ID(  '[QA-BF].dbo.cfd_delete', 'U') IS NOT NULL
+begin
+  insert        [QA-BF].dbo.cfd
+  select * from [QA-BF].dbo.cfd_delete where numTimbre = @uuid;
+end
+
+IF OBJECT_ID(  '[QA-TF].dbo.cfd_delete', 'U') IS NOT NULL
+begin
+  insert        [QA-TF].dbo.cfd
+  select * from [QA-TF].dbo.cfd_delete where numTimbre = @uuid;
+end
+
+IF OBJECT_ID(  '[QA-CF].dbo.cfd_delete', 'U') IS NOT NULL
+begin
+  insert        [QA-CF].dbo.cfd
+  select * from [QA-CF].dbo.cfd_delete where numTimbre = @uuid;
+end
+
+END
+
+exec FinderMachine_RecoverDeletedCfd 'f49f1605-7a37-4223-a2e2-941a9152e0bf'
 ```

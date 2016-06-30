@@ -11,6 +11,16 @@ import (
 )
 
 func ReadXML(options map[string]interface{}) <-chan XmlRecord {
+	// Uses FinderMachine_ReadXML stored procedure
+	return readXml(options, "FinderMachine_ReadXML")
+}
+
+func ReadXMLMissingCfd(options map[string]interface{}) <-chan XmlRecord {
+	// Uses FinderMachine_ReadXml_MissingCfd stored procedure
+	return readXml(options, "FinderMachine_ReadXml_MissingCfd")
+}
+
+func readXml(options map[string]interface{}, procedure string) <-chan XmlRecord {
 	l4g.Info("producers/xml: loading configuration")
 
 	cfg, err := config.ParseYamlFile("config/finder_machine.yaml")
@@ -41,7 +51,7 @@ func ReadXML(options map[string]interface{}) <-chan XmlRecord {
 
 	ping(connection)
 
-	return produceChannel(connection, options)
+	return produceChannel(connection, options, procedure)
 }
 
 type connectionParameters struct {
@@ -75,7 +85,7 @@ func ping(db *sql.DB) {
 	}
 }
 
-func produceChannel(db *sql.DB, options map[string]interface{}) <-chan XmlRecord {
+func produceChannel(db *sql.DB, options map[string]interface{}, procedure string) <-chan XmlRecord {
 	l4g.Info("producers/xml: querying database")
 	out := make(chan XmlRecord)
 	go func() {
@@ -98,7 +108,7 @@ func produceChannel(db *sql.DB, options map[string]interface{}) <-chan XmlRecord
 			timestamp time.Time
 		)
 
-		rows, err := db.Query("exec FinderMachine_ReadXML ?, ?", startDate, endDate)
+		rows, err := db.Query("exec "+procedure+" ?, ?", startDate, endDate)
 
 		if err != nil {
 			log.Fatal(err)
