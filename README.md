@@ -21,11 +21,10 @@ SET NOCOUNT ON
 
 select xml.uuid, xml.xml, xml.timestamp
 from xml
-inner join cfd on cfd.numTimbre = xml.uuid
-left join POOL_ENVIOCFD_SAT_Z as pz on pz.comprobante_Id = cfd.idInternal
-left join cfd_envio_sat_z as acuse on acuse.comprobante_Id = cfd.idInternal
+inner join [QA-DANY].dbo.cfd on cfd.numTimbre = xml.uuid
+left join  [QA-DANY].dbo.POOL_ENVIOCFD_SAT_Z as pz on pz.comprobante_Id = cfd.idInternal
+left join  [QA-DANY].dbo.cfd_envio_sat_z as acuse on acuse.comprobante_Id = cfd.idInternal
 where timestamp > @startDate and timestamp < @endDate and pz.comprobante_Id is null and acuse.comprobante_Id is null
-order by timestamp desc
 
 END
 
@@ -43,14 +42,10 @@ BEGIN
 
 SET NOCOUNT ON
 
-declare @comprobanteId varchar(40)
-
-set @comprobanteId = (select idinternal
-                      from dbo.cfd
-                      where numtimbre = @uuid)
-
-insert into dbo.POOL_ENVIOCFD_SAT_Z(idInternal, comprobante_Id, fechaRegistro, status)
-values(replace(newid(), '-', ''), @comprobanteId, getdate(), 0)
+insert into [QA-DANY].dbo.POOL_ENVIOCFD_SAT_Z(idInternal, comprobante_Id, fechaRegistro, status)
+select      replace(newid(), '-', ''), idInternal, getdate(), 0
+from        [QA-DANY].dbo.cfd
+where numtimbre = @uuid;
 
 END
 
@@ -70,15 +65,20 @@ SET NOCOUNT ON
 
 select xml.uuid, xml.xml, xml.timestamp
 from xml
-left join cfd on cfd.numTimbre = xml.uuid
-where timestamp > @startDate and timestamp < @endDate and cfd.idInternal is null
+left join [QA-DANY].dbo.cfd  as cfd0 on cfd0.numTimbre = xml.uuid
+left join [QA-BF].dbo.cfd    as cfd1 on cfd1.numTimbre = xml.uuid
+left join [QA-TF].dbo.cfd    as cfd2 on cfd2.numTimbre = xml.uuid
+left join [QA-CF].dbo.cfd    as cfd3 on cfd3.numTimbre = xml.uuid
+where timestamp > @startDate and timestamp < @endDate
+and cfd0.idInternal is null
+and cfd1.idInternal is null
+and cfd2.idInternal is null
+and cfd3.idInternal is null
 order by timestamp desc
 
 END
 
-
-exec FinderMachine_ReadXml_MissingCfd '2016-06-24', '2016-06-30'
-
+exec FinderMachine_ReadXml_MissingCfd '2016-01-01', '2016-06-30'
 ```
 
 
